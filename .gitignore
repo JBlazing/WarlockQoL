@@ -1,0 +1,49 @@
+# --- JetBrains / PyCharm ---
+# Whole IDE folder: per-user settings, deployment paths, workspace state.
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# --- VS Code ---
+.vscode/
+*.code-workspace
+
+# --- OS files ---
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Editor temp / backups ---
+*~
+*.swp
+*.swo
+*.tmp
+*.bak
+*.orig
+*.pre-merge
+
+# --- WoW client data (never commit) ---
+# SavedVariables hold per-account/character data; WTF holds account config.
+WTF/
+SavedVariables/
+*.lua.bak
+Logs/
+Errors/
+Cache/
+
+# --- Packaging / release output ---
+*.zip
+dist/
+build/
+.release/
+
+# --- Lua tooling ---
+luacov.stats.out
+luacov.report.out
+.luarocks/
+lua_modules/
