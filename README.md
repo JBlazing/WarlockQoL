@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/soul-shard.svg" width="128" alt="Soul Shard"></p>
+
 # Warlock QoL
 
 Quality-of-life helpers for Warlocks on **World of Warcraft: Forever**.
@@ -352,3 +354,7 @@ To add a feature, create a file in `Modules\` that calls `ns.RegisterModule`, an
 - **Hidden values:** the game can hide some values from addons, such as names, counts and states. When that happens, the addon skips the action or shows `?` instead of guessing.
 - **The summon message** may be blocked by the game in combat or during boss fights.
 - **No damage meter, combat log tools, or replacement of Blizzard frames.** Forever blocks combat log access for addons, and Blizzard ships its own damage meter and cooldown manager.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
