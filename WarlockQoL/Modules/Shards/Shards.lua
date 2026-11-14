@@ -103,7 +103,7 @@ function ns.Refresh()
     if not ns.display then return end
     local db = ns.shardDB
     local count, nativeMax = ns.ReadShards()
-    local cap = nativeMax or db.cap
+    local cap = nativeMax or ns.ShardCap()
 
     if not count then
         ns.UpdateDisplay(nil, cap, "unknown")
@@ -150,6 +150,12 @@ function ns.SetCap(n)
     Print("Cap set to " .. n .. ". Shards above it are deleted now (out of combat).")
     if ns.mode == "power" then
         Print("Note: shards are a power bar on this client, so its native max is used and nothing is deleted.")
+    else
+        local soulCap, fromBag = ns.ShardCap()
+        if fromBag then
+            Print("Note: you have a Soul Shard bag equipped, so its size (" .. soulCap
+                .. ") is the cap until you take it off.")
+        end
     end
     ns.Refresh()
     ns.Trim.Begin()
@@ -251,6 +257,9 @@ Start = function(self)
 
     ns.On("PLAYER_REGEN_ENABLED", function()
         ns.Trim.OnRegenEnabled()
+    end)
+    ns.On("PLAYER_REGEN_DISABLED", function()
+        ns.Trim.OnRegenDisabled()
     end)
     ns.On("BAG_UPDATE_DELAYED", function() -- shards and demon reagents
         ns.Refresh()

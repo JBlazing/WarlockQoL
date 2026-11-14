@@ -111,6 +111,52 @@ end
 -- Bag work
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- Soul Shard bags (Soul Pouch, Felcloth Bag, Core Felcloth Bag, ...):
+-- while one is equipped, the cap is the total size of the soul bags and
+-- extras are only ever deleted from regular bags.
+---------------------------------------------------------------------------
+
+local SOUL_BAG_FAMILY = 4   -- bagFamily bit for Soul Shard bags
+local GetFreeSlots = (C and C.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
+local band = bit and bit.band
+
+local function IsSoulBag(bag)
+    -- The backpack (bag 0) can never be a soul bag.
+    if bag < 1 or not GetFreeSlots then return false end
+    local _, family = GetFreeSlots(bag)
+    family = ns.Plain(family)
+    if type(family) ~= "number" or family <= 0 then return false end
+    if band then
+        return band(family, SOUL_BAG_FAMILY) ~= 0
+    end
+    return family % (SOUL_BAG_FAMILY * 2) >= SOUL_BAG_FAMILY
+end
+
+-- Total slots in equipped Soul Shard bags (0 if none).
+function Trim.SoulBagSlots()
+    if not GetNumSlots then return 0 end
+    local total = 0
+    for bag = 1, LAST_BAG do
+        if IsSoulBag(bag) then
+            total = total + (ns.Plain(GetNumSlots(bag)) or 0)
+        end
+    end
+    return total
+end
+
+-- The cap in use: soul bag size while one is equipped, else the set cap.
+-- Second return is true when the soul bag size is being used.
+function ns.ShardCap()
+    if ns.mode == "item" then
+        local soul = Trim.SoulBagSlots()
+        if soul > 0 then
+            return soul, true
+        end
+    end
+    return ns.shardDB.cap, false
+end
+
 function Trim.Excess()
     if ns.mode ~= "item" or not ns.shardDB then
         return 0
@@ -119,20 +165,22 @@ function Trim.Excess()
     if not count then
         return 0
     end
-    local excess = count - ns.shardDB.cap
+    local excess = count - ns.ShardCap()
     if excess < 0 then
         return 0
     end
     return excess
 end
 
--- Last unlocked shard in the bags, searching from the back.
+-- Last unlocked shard in the regular bags, searching from the back.
+-- Soul Shard bags are skipped: the shards kept there are the ones under
+-- the cap, so extras are always taken from regular bags.
 -- Second return when nothing usable is found: true if a shard exists but
 -- is locked (normal, retry later), false if no shard was seen at all.
 local function FindShardSlot()
     local sawLocked = false
     for bag = LAST_BAG, FIRST_BAG, -1 do
-        local slots = ns.Plain(GetNumSlots(bag)) or 0
+        local slots = IsSoulBag(bag) and 0 or (ns.Plain(GetNumSlots(bag)) or 0)
         for slot = slots, 1, -1 do
             if ns.Plain(GetItemID(bag, slot)) == ns.SHARD_ITEM_ID then
                 local info = GetItemInfo(bag, slot)
@@ -157,8 +205,8 @@ local function DeleteOne(excess)
         if slot then
             return false, "shard is locked", true
         end
-        return false, "the count says you are over the cap but no shard was found in bags "
-            .. FIRST_BAG .. "-" .. LAST_BAG .. ". Run /sscap status"
+        return false, "the count says you are over the cap but no shard was found in your"
+            .. " regular bags " .. FIRST_BAG .. "-" .. LAST_BAG .. ". Run /sscap status"
     end
     if stack > excess then
         if not SplitItem then
@@ -298,7 +346,21 @@ function Trim.OnBags()
     Trim.UpdateButton()
 end
 
+-- PLAYER_REGEN_DISABLED fires just before InCombatLockdown() turns true,
+-- so track combat with our own flag for the delete button.
+local inCombat = false
+
+function Trim.InCombat()
+    return inCombat or InCombatLockdown()
+end
+
+function Trim.OnRegenDisabled()
+    inCombat = true
+    Trim.UpdateButton()   -- hides the delete button for the fight
+end
+
 function Trim.OnRegenEnabled()
+    inCombat = false
     if pendingCombat then
         pendingCombat = false
     end
@@ -329,8 +391,11 @@ function Trim.Status()
     local P = ns.Print
     local count, nativeMax = ns.ReadShards()
     P("mode " .. ns.Show(ns.mode) .. "  shard item ID " .. ns.Show(ns.SHARD_ITEM_ID)
-        .. "  count " .. ns.Show(count) .. "  cap " .. ns.Show(nativeMax or ns.shardDB.cap)
+        .. "  count " .. ns.Show(count) .. "  cap " .. ns.Show(nativeMax or ns.ShardCap())
         .. "  excess " .. Trim.Excess())
+    local soul = Trim.SoulBagSlots()
+    P("soul shard bag " .. (soul > 0 and ("yes (" .. soul .. " slots, used as the cap; set cap "
+        .. ns.shardDB.cap .. " ignored)") or "no (set cap " .. ns.shardDB.cap .. " used)"))
     if ns.mode == "power" then
         P("Shards are read as a POWER BAR (max " .. ns.Show(nativeMax)
             .. "), so nothing is deleted. If your shards are bag items, type /sscap mode item")
@@ -382,8 +447,9 @@ end
 --   * Create Healthstone: you have no healthstone, know the spell and hold
 --     at least one shard, at any shard count (secure button; only changed
 --     out of combat, re-run on combat end; hidden while dead by its holder)
---   * Delete extra: over the cap, no healthstone to make, and auto-delete
---     is off or blocked
+--   * Delete extra: over the cap, no healthstone to make, auto-delete
+--     is off or blocked, and out of combat (hidden on PLAYER_REGEN_DISABLED,
+--     shown again on PLAYER_REGEN_ENABLED)
 function Trim.UpdateButton()
     if not ns.shardDB then return end
     local excess = Trim.Excess()
@@ -412,7 +478,8 @@ function Trim.UpdateButton()
         -- Plain, non-secure button, so it can be hidden any time, combat
         -- included. Covers ghosts too. A secret value counts as alive.
         local dead = UnitIsDeadOrGhost and ns.Plain(UnitIsDeadOrGhost("player"))
-        if visible and not dead and not hsSpell and not hsShown and not AutoAllowed() then
+        if visible and not dead and not Trim.InCombat()
+            and not hsSpell and not hsShown and not AutoAllowed() then
             del:SetText("Delete extra (" .. excess .. ")")
             del:Show()
         else
