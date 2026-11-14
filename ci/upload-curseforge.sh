@@ -79,7 +79,7 @@ echo "Uploading $zip_path to CurseForge project $CF_PROJECT_ID as $release_type.
 response_file="$(mktemp)"
 http_code="$(curl -sS -o "$response_file" -w '%{http_code}' \
   -H "X-Api-Token: $CF_API_TOKEN" \
-  -F "metadata=$metadata" \
+  --form-string "metadata=$metadata" \
   -F "file=@$zip_path" \
   "$API/projects/$CF_PROJECT_ID/upload-file")"
 
