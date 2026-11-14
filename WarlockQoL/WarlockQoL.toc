@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: Warlock QoL
 ## Notes: Warlock helpers: summon announce, Soul Shard cap, healthstone button, demon bar.
-## Version: 2.4.0
+## Version: 2.5.0
 ## SavedVariablesPerCharacter: WarlockQoLDB
 ## IconTexture: Interface\Icons\Spell_Shadow_Twilight
 
