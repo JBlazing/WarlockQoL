@@ -10,7 +10,7 @@ Quality-of-life helpers for Warlocks on **World of Warcraft: Forever**.
 
 Every button only does something when you click it. The addon never casts spells or makes combat decisions for you.
 
-Version 2.4.0, interface 16001 (Forever). Settings are saved per character.
+Version 2.5.0, interface 16001 (Forever). Settings are saved per character.
 
 ---
 
