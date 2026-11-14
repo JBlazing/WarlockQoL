@@ -1,7 +1,13 @@
 # Warlock QoL: build and publish to CurseForge.
 #
-# How a release works (scripts/release.sh does steps 1-2 for you, e.g.
-# `bash scripts/release.sh patch --beta`; run it with -h for options):
+# Releasing from GitLab: Build > Pipelines > Run pipeline on main, set "release" to true and
+# pick bump/channel. The release job bumps the version, commits, and pushes the tag, which
+# starts the publish pipeline below. (Needs the RELEASE_TOKEN variable, see RELEASING.md.)
+#
+# Releasing from your PC: scripts/release.sh does steps 1-2 for you, e.g.
+# `bash scripts/release.sh patch --beta`; run it with -h for options.
+#
+# How a release works:
 #   1. Bump "## Version:" in WarlockQoL/WarlockQoL.toc and commit.
 #   2. Push a matching tag:  git tag -a v2.4.1 -m "What changed" && git push origin v2.4.1
 #   3. This pipeline checks the code, zips the addon and uploads it to CurseForge.
@@ -21,9 +27,34 @@
 #   CF_DRY_RUN=1         Build everything but skip the actual upload.
 #   HUB_MIRROR           Registry the job image is pulled through. Defaults to the Docker
 #                        Hub pull-through cache on the Pi (/opt/docker-reg, port 5001).
-#                        The runner's host Docker daemon does the pull, so "localhost"
-#                        means the Pi itself, not the runner container. The cache fills
-#                        itself on first pull; nothing has to be pushed by hand.
+#                        The Pi's rootless Podman does the pull, so "localhost" means the
+#                        Pi itself, not the runner container. Podman must list it as an
+#                        insecure registry (~/.config/containers/registries.conf.d/).
+#                        The cache fills itself on first pull.
+#   RELEASE_TOKEN        Project access token (write_repository, Maintainer) used by the
+#                        manual release job to push the version commit and tag.
+#
+# The inputs below only matter for a manual "Run pipeline"; pushes and tags use the defaults.
+
+spec:
+  inputs:
+    release:
+      type: boolean
+      default: false
+      description: "Cut a release from main: bump the version, commit and tag it."
+    bump:
+      options: [patch, minor, major, none]
+      default: patch
+      description: "Version bump. 'none' tags the current .toc version (next beta, or final after betas)."
+    channel:
+      options: [beta, alpha, prod]
+      default: beta
+      description: "CurseForge release type. beta/alpha tag vX.Y.Z-beta.N; prod tags vX.Y.Z."
+    message:
+      type: string
+      default: ""
+      description: "Changelog for CurseForge. Leave empty to list the commits since the last tag."
+---
 
 workflow:
   rules:
@@ -35,6 +66,7 @@ workflow:
 
 stages:
   - validate
+  - release
   - package
   - publish
 
@@ -48,14 +80,35 @@ variables:
   HUB_MIRROR: localhost:5001
   ADDON_DIR: WarlockQoL
   GIT_DEPTH: 0 # full history so the changelog can find the previous tag
+  RELEASE: "$[[ inputs.release ]]"
 
 lint:
   stage: validate
   script:
     - bash ci/validate.sh
 
+# Manual release: only from "Run pipeline" (or the API) on the default branch with release=true.
+# It pushes a tag; the tag's own pipeline does the packaging and CurseForge upload.
+release:
+  stage: release
+  needs: [lint]
+  interruptible: false
+  resource_group: release # never cut two releases at once
+  rules:
+    - if: $RELEASE == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE =~ /^(web|api)$/
+  variables:
+    RELEASE_BUMP: $[[ inputs.bump ]]
+    RELEASE_CHANNEL: $[[ inputs.channel ]]
+    RELEASE_MESSAGE: $[[ inputs.message ]]
+  script:
+    - bash ci/cut-release.sh
+
 package:
   stage: package
+  rules:
+    - if: $RELEASE == "true"
+      when: never # a release run only tags; the tag pipeline builds the zip
+    - when: on_success
   script:
     - bash ci/package.sh
   artifacts:

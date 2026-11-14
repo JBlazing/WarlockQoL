@@ -114,6 +114,8 @@ When you hold **more shards than your cap**, the addon removes the extras:
 1. **No healthstone, and you know Create Healthstone:** the extra shard is **kept**, and the [Create Healthstone button](#create-healthstone-button) appears, so you can turn it into a healthstone instead.
 2. **Otherwise:** the extra shards are **deleted** automatically, one at a time, until you are back at the cap.
 
+**Soul Shard bags.** While a Soul Shard bag (Soul Pouch, Felcloth Bag, and so on) is equipped, the cap is the **size of that bag** (all soul bags added together if you have more than one), and the cap you set is ignored. Shards in the soul bag are never deleted. Once the soul bag is full, new shards land in your regular bags, and those are the ones removed. Take the soul bag off and your set cap applies again.
+
 Automatic deletion runs when:
 - your bags change: looting, Drain Soul, trading, moving items
 - you log in or zone
@@ -153,7 +155,8 @@ A button under the counter labelled **Delete extra (N)**. **Each click deletes o
 - you hold more shards than the cap,
 - there is no healthstone to make (otherwise the Create Healthstone button shows instead),
 - auto-delete is **off**, or the game **blocked** it,
-- you are alive (also hidden as a ghost).
+- you are alive (also hidden as a ghost),
+- you are out of combat (it hides when combat starts and comes back when combat ends).
 
 ---
 

@@ -3,7 +3,41 @@
 Releases are published to CurseForge by the GitLab pipeline whenever a version tag is pushed.
 `scripts/release.sh` updates the addon's version and creates that tag for you.
 
-## Quick start
+## Releasing from GitLab (no local setup)
+
+1. **Build > Pipelines > Run pipeline**, branch `main`.
+2. Fill in the inputs:
+
+   | Input | Values | Meaning |
+   | --- | --- | --- |
+   | `release` | `true` / `false` | Must be `true` to cut a release. |
+   | `bump` | `patch` (default), `minor`, `major`, `none` | `none` tags the current `.toc` version: use it for the next beta, or the final release after betas. |
+   | `channel` | `beta` (default), `alpha`, `prod` | CurseForge release type. `prod` tags `vX.Y.Z`. |
+   | `message` | text | Changelog. Empty = commits since the previous tag. |
+
+3. The pipeline runs `lint`, then the `release` job. It runs `scripts/release.sh` on `main`
+   (same rules as below), pushes the version commit (with `ci.skip`, so no extra pipeline),
+   then pushes the tag. The tag's own pipeline packages the addon and uploads it to CurseForge.
+
+Example sequence: `patch`+`beta` → `none`+`beta` → `none`+`prod` gives
+`v2.4.1-beta.1`, `v2.4.1-beta.2`, `v2.4.1`.
+
+If someone pushes to `main` while the release pipeline is running, the job stops rather than
+release code that wasn't checked; run the pipeline again.
+
+### One-time setup: `RELEASE_TOKEN`
+
+The job pushes with a project access token, not the job token, because pushes made with the
+job token don't start pipelines (so the tag would never be published).
+
+1. **Settings > Access tokens > Add new token**: role **Maintainer**, scope **write_repository**.
+2. **Settings > CI/CD > Variables > Add variable**: key `RELEASE_TOKEN`, the token as value,
+   **Masked** and **Protected** (so only `main` and protected tags can use it).
+3. If `main` or `v*` tags are protected, make sure Maintainers are allowed to push/create them.
+
+## Releasing from your PC
+
+### Quick start
 
 Run from Git Bash in the repo:
 
