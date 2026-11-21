@@ -176,17 +176,18 @@ function Pets.Layout()
     end
 end
 
--- Gap under the shard counter: room for the Create Healthstone / Delete
--- extra row when one of those buttons is showing, otherwise directly under.
-local ROW_GAP = -30
+-- Gap under the shard counter: room for each button row showing between
+-- them (Create Healthstone / Delete extra, then Firestone / Spellstone),
+-- otherwise directly under.
 local NO_ROW_GAP = -2
-local rowShown = false
+local ROW_STEP = -28 -- one 24px row plus spacing
+local rowCount = 0
 
 local function Anchor()
     container:ClearAllPoints()
     local p = ns.petDB and ns.petDB.point
     if attachedTo then
-        container:SetPoint("TOPLEFT", attachedTo, "BOTTOMLEFT", 0, rowShown and ROW_GAP or NO_ROW_GAP)
+        container:SetPoint("TOPLEFT", attachedTo, "BOTTOMLEFT", 0, NO_ROW_GAP + rowCount * ROW_STEP)
     elseif p then
         container:SetPoint(p[1], UIParent, p[2], p[3], p[4])
     else
@@ -195,14 +196,14 @@ local function Anchor()
     end
 end
 
--- Called by the Soul Shards module whenever its button row changes. The bar
+-- Called by the Soul Shards module whenever its button rows change. The bar
 -- is protected, so a change in combat is applied once combat ends.
 local anchorQueued = false
 
-function Pets.SetButtonRowShown(shown)
-    shown = shown and true or false
-    if shown == rowShown then return end
-    rowShown = shown
+function Pets.SetButtonRows(n)
+    n = tonumber(n) or 0
+    if n == rowCount then return end
+    rowCount = n
     if not container or not attachedTo then return end
     if not InCombatLockdown() then
         Anchor()

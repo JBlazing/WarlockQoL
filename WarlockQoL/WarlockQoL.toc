@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Warlock QoL
-## Notes: Warlock helpers: summon announce, Soul Shard cap, healthstone button, demon bar.
+## Notes: Warlock helpers: summon announce, Soul Shard cap, healthstone button, soulstone button, demon bar.
 ## Version: 2.5.0
 ## SavedVariablesPerCharacter: WarlockQoLDB
 ## IconTexture: Interface\Icons\Spell_Shadow_Twilight
@@ -8,6 +8,8 @@
 Core.lua
 Modules\SummonAnnounce.lua
 Modules\Pets.lua
+Modules\Soulstone.lua
 Modules\Shards\UI.lua
 Modules\Shards\Trim.lua
+Modules\Shards\Stones.lua
 Modules\Shards\Shards.lua

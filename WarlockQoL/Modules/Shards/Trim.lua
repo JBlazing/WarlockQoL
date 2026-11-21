@@ -412,6 +412,7 @@ function Trim.Status()
     P("healthstone in bags " .. YesNo(Trim.HasHealthstone())
         .. "  Create Healthstone known " .. (hsSpell and ("yes (spell " .. hsSpell .. ")") or "no")
         .. "  -> extra shards " .. (Trim.WantHealthstone() and "kept for the Create Healthstone button" or "deleted"))
+    P(ns.Stones.StatusLine())
 
     if not Trim.Supported() then return end
     local bag, slot, stack = FindShardSlot()
@@ -447,6 +448,9 @@ end
 --   * Create Healthstone: you have no healthstone, know the spell and hold
 --     at least one shard, at any shard count (secure button; only changed
 --     out of combat, re-run on combat end; hidden while dead by its holder)
+--   * Firestone / Spellstone row under the healthstone row: two half-width
+--     Create buttons, or one Apply button while a stone is in your bags
+--     (see Stones.lua)
 --   * Delete extra: over the cap, no healthstone to make, auto-delete
 --     is off or blocked, and out of combat (hidden on PLAYER_REGEN_DISABLED,
 --     shown again on PLAYER_REGEN_ENABLED)
@@ -487,9 +491,62 @@ function Trim.UpdateButton()
         end
     end
 
-    -- The demon bar sits directly under the counter unless one of these
-    -- buttons is in the row between them.
-    if ns.Pets and ns.Pets.SetButtonRowShown then
-        ns.Pets.SetButtonRowShown((hsShown or (del and del:IsShown())) and true or false)
+    local topRow = (hsShown or (del and del:IsShown())) and true or false
+
+    -- Firestone (left) / Spellstone (right) row: secure, so only changed out
+    -- of combat. Sits under the healthstone / delete row when that is
+    -- showing, otherwise moves up directly under the counter.
+    -- With a stone in your bags the row is one button that applies it to
+    -- your weapon instead.
+    local row = ns.stoneRow
+    if row and not InCombatLockdown() then
+        local state, a, b, c
+        if not ns.shardDB.hidden then
+            state, a, b, c = ns.Stones.RowState(count and count >= 1)
+        end
+        local any = false
+        local apply = row.apply
+        if state == "apply" then
+            local stone, use, itemID = a, b, c
+            apply:SetAttribute("type", "macro")
+            apply:SetAttribute("macrotext", ns.Stones.ApplyMacro(use))
+            apply.itemID = itemID
+            apply:SetText("Apply " .. stone.label)
+            local icon = itemID and C_Item and C_Item.GetItemIconByID
+                and ns.Plain(C_Item.GetItemIconByID(itemID))
+            apply.icon:SetTexture(icon or stone.icon)
+            if apply.SetBackdropColor then
+                local col = stone.color
+                apply:SetBackdropColor(col.bg[1], col.bg[2], col.bg[3], col.bg[4])
+                apply:SetBackdropBorderColor(col.border[1], col.border[2], col.border[3], col.border[4])
+            end
+            apply:Show()
+            any = true
+        else
+            apply:Hide()
+        end
+        for _, stone in ipairs(ns.Stones.list) do
+            local btn = row.buttons[stone.key]
+            local spell = state == "create" and a[stone.key] or nil
+            if spell then
+                btn:SetAttribute("type", "spell")
+                btn:SetAttribute("spell", spell)
+                btn.spellID = spell
+                btn.icon:SetTexture(ns.Stones.Icon(stone, spell))
+                btn:Show()
+                any = true
+            else
+                btn:Hide()
+            end
+        end
+        row.active = any
+        ns.AnchorStoneRow(row, topRow)
+    end
+    local rows = (topRow and 1 or 0) + ((row and row.active) and 1 or 0)
+
+    -- The demon bar sits directly under the counter, below however many of
+    -- these button rows are showing.
+    if ns.Pets and ns.Pets.SetButtonRows then
+        ns.Pets.SetButtonRows(rows)
     end
 end

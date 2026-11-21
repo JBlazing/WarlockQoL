@@ -1,6 +1,9 @@
 # Warlock QoL: build and publish to CurseForge.
 #
-# Releasing from GitLab: Build > Pipelines > Run pipeline on main, set "release" to true and
+# One-click release: open any main pipeline and press play on release:patch, release:minor
+# or release:major. It bumps the .toc, commits, and tags vX.Y.Z (a CurseForge "release").
+#
+# Releasing from GitLab with options: Build > Pipelines > Run pipeline on main, set "release" to true and
 # pick bump/channel. The release job bumps the version, commits, and pushes the tag, which
 # starts the publish pipeline below. (Needs the RELEASE_TOKEN variable, see RELEASING.md.)
 #
@@ -87,21 +90,54 @@ lint:
   script:
     - bash ci/validate.sh
 
-# Manual release: only from "Run pipeline" (or the API) on the default branch with release=true.
-# It pushes a tag; the tag's own pipeline does the packaging and CurseForge upload.
-release:
+# Both kinds of release job push a tag; the tag's own pipeline does the packaging and
+# CurseForge upload.
+.cut-release:
   stage: release
   needs: [lint]
   interruptible: false
   resource_group: release # never cut two releases at once
+  script:
+    - bash ci/cut-release.sh
+
+# Manual release: only from "Run pipeline" (or the API) on the default branch with release=true.
+release:
+  extends: .cut-release
   rules:
     - if: $RELEASE == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE =~ /^(web|api)$/
   variables:
     RELEASE_BUMP: $[[ inputs.bump ]]
     RELEASE_CHANNEL: $[[ inputs.channel ]]
     RELEASE_MESSAGE: $[[ inputs.message ]]
-  script:
-    - bash ci/cut-release.sh
+
+# One-click release: every normal main pipeline gets play buttons that bump the .toc to the
+# next version (patch/minor/major), commit it and push the vX.Y.Z tag (CurseForge "release").
+# The changelog is the commits since the last final release. They're optional, so the
+# pipeline still passes if nobody presses them, and they refuse to run if main has moved on.
+.release-button:
+  extends: .cut-release
+  rules:
+    - if: $RELEASE != "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+  variables:
+    RELEASE_CHANNEL: prod
+    RELEASE_MESSAGE: ""
+
+release:patch:
+  extends: .release-button
+  variables:
+    RELEASE_BUMP: patch
+
+release:minor:
+  extends: .release-button
+  variables:
+    RELEASE_BUMP: minor
+
+release:major:
+  extends: .release-button
+  variables:
+    RELEASE_BUMP: major
 
 package:
   stage: package

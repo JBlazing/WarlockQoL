@@ -3,7 +3,24 @@
 Releases are published to CurseForge by the GitLab pipeline whenever a version tag is pushed.
 `scripts/release.sh` updates the addon's version and creates that tag for you.
 
-## Releasing from GitLab (no local setup)
+## One-click release from GitLab
+
+Every pipeline on `main` has three manual jobs in the **release** stage:
+
+| Job | Example |
+| --- | --- |
+| `release:patch` | `2.5.0` → tag `v2.5.1` |
+| `release:minor` | `2.5.0` → tag `v2.6.0` |
+| `release:major` | `2.5.0` → tag `v3.0.0` |
+
+Open the latest `main` pipeline and press ▶ on the one you want. It works out the next version
+from the `.toc`, commits `Release vX.Y.Z`, and pushes the tag. The changelog is the commits
+since the last final release, and the tag is published as a CurseForge **release** (not a beta).
+The jobs are optional, so a pipeline nobody releases from still passes. If `main` has moved on
+since that pipeline ran, the job stops; use the newest pipeline instead. Needs `RELEASE_TOKEN`
+(see below).
+
+## Releasing from GitLab with options (betas, custom changelog)
 
 1. **Build > Pipelines > Run pipeline**, branch `main`.
 2. Fill in the inputs:

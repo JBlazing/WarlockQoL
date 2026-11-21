@@ -5,8 +5,9 @@
 Quality-of-life helpers for Warlocks on **World of Warcraft: Forever**.
 
 - **Summon Announce**: tells your party or raid who you are summoning when you start Ritual of Summoning.
-- **Soul Shards**: a shard counter with a cap, removal of shards above the cap, and a Create Healthstone button.
+- **Soul Shards**: a shard counter with a cap, removal of shards above the cap, and Create Healthstone, Firestone and Spellstone buttons.
 - **Demon Bar**: a button that opens a row of the demons you can summon, shown whenever you have no pet out.
+- **Soulstone Button**: in dungeons and raids, while the soulstone is off cooldown: creates a soulstone if you have none, or uses the one in your bags on your target.
 
 Every button only does something when you click it. The addon never casts spells or makes combat decisions for you.
 
@@ -23,8 +24,10 @@ Version 2.5.0, interface 16001 (Forever). Settings are saved per character.
   - [Shard counter](#shard-counter)
   - [Cap and shard removal](#cap-and-shard-removal)
   - [Create Healthstone button](#create-healthstone-button)
+  - [Firestone and Spellstone buttons](#firestone-and-spellstone-buttons)
   - [Delete extra button](#delete-extra-button)
 - [Demon Bar](#demon-bar)
+- [Soulstone Button](#soulstone-button)
 - [Commands](#commands)
 - [Combat rules](#combat-rules)
 - [Troubleshooting](#troubleshooting)
@@ -56,8 +59,9 @@ Later updates that only change existing files need just `/reload`. If a file is 
 |---|---|
 | Everything | Your character is a **Warlock**. Other classes get nothing; no frames are created. |
 | Summon Announce | Always active for Warlocks (unless turned off). |
-| Soul Shards (counter, healthstone, delete) | You know **Drain Soul**. Until then nothing appears. Once you learn it, the counter appears right away, without `/reload`. |
+| Soul Shards (counter, healthstone, firestone, spellstone, delete) | You know **Drain Soul**. Until then nothing appears. Once you learn it, the counter appears right away, without `/reload`. |
 | Demon Bar | You know **at least one summon spell**, have **no pet** out, and are **alive**, **not mounted** and **not on a flight path**. |
+| Soulstone Button | You are in a **dungeon or raid**, the soulstone is **not on cooldown**, and you are **alive**. With no soulstone in your bags it also needs **Create Soulstone** and a **Soul Shard**. |
 
 ---
 
@@ -149,6 +153,19 @@ It shows when all of these are true:
 
 The button is exactly as wide as the counter. Hover it for the spell tooltip.
 
+### Firestone and Spellstone buttons
+
+A row under the Create Healthstone button. What it shows depends on your bags:
+
+- **Neither a firestone nor a spellstone in your bags:** two half-width buttons, **Firestone** on the left (orange) and **Spellstone** on the right (blue). Each casts your highest known rank of Create Firestone / Create Spellstone. Each one needs the Create spell and at least one Soul Shard. The halves keep their sides, so if you only know one spell, the other half is empty.
+- **A firestone or spellstone in your bags:** one full-width **Apply Firestone** / **Apply Spellstone** button. Clicking it uses the stone and applies it to your **main-hand weapon** in one click (like a `/use <stone>` + `/use 16` macro). If you carry both, Firestone comes first.
+
+The row is hidden while you are dead or the counter is hidden. When the Create Healthstone (or Delete extra) button is not showing, the row moves up directly under the counter.
+
+Unlike healthstones, these do **not** hold back shard removal. If you are at the cap, extras are still deleted.
+
+Like the healthstone button, they only appear, disappear or move **out of combat**.
+
 ### Delete extra button
 
 A button under the counter labelled **Delete extra (N)**. **Each click deletes one** extra shard. It shows when all of these are true:
@@ -196,14 +213,37 @@ The pet, death and mount checks are run by the game, so they work in combat too 
 **Position:**
 - **Before you know Drain Soul:** the bar stands alone. Its default spot is slightly below the center of the screen. You can drag it, and the position is saved.
 - **After you learn Drain Soul:** the bar sits under the shard counter and follows it. It can't be dragged; move the counter instead.
-  - When the Create Healthstone or Delete extra button is showing, the bar sits below that button.
-  - When neither is showing, the bar sits directly under the counter.
+  - The bar sits below whichever button rows are showing: the Create Healthstone / Delete extra row, then the Firestone / Spellstone row.
+  - When none are showing, the bar sits directly under the counter.
 
 | Command | What it does |
 |---|---|
 | `/wqol pets on` / `off` | Turn the demon bar on or off. Applies right away. |
 | `/wqol pets reset` | Move the bar back to its default spot (only matters before Drain Soul). |
 | `/sscap pets` | Shortcut that toggles the demon bar on or off. |
+
+---
+
+## Soulstone Button
+
+One button with two modes. It shows only when you are inside a **dungeon or raid** instance, the soulstone is **not on cooldown** (30 minutes after you use one), and you are alive.
+
+- **No soulstone in your bags: Create Soulstone.** Click to create the highest rank you know. Needs a Create Soulstone rank and at least one Soul Shard.
+- **Soulstone in your bags: Use Soulstone.** Click to use it on your current target (best rank first if you carry more than one).
+
+So the usual flow is: click once to create the stone, click again to put it on your target. Once it is used, the button hides for the 30-minute cooldown.
+
+The cooldown is read from the game's item cooldown. The addon also remembers when you last used a soulstone (saved across logouts), so the button stays hidden for the full 30 minutes even with no soulstone in your bags. When the cooldown ends, the button comes back on its own.
+
+The button is a protected frame, so it only appears or disappears **out of combat**; a change during combat is applied when combat ends. Hiding on death is run by the game and works in combat too.
+
+**Drag** the button to move it (out of combat). Its default spot is just above the shard counter.
+
+| Command | What it does |
+|---|---|
+| `/wqol soulstone on` / `off` | Turn the soulstone button on or off. Applies right away. |
+| `/wqol soulstone status` | Explain why the button is or is not showing. |
+| `/wqol soulstone reset` | Move the button back to its default spot. |
 
 ---
 
@@ -229,7 +269,7 @@ The pet, death and mount checks are run by the game, so they work in combat too 
 | `/sscap delete` | Delete one extra shard now (out of combat). |
 | `/sscap near <number>` | How many shards before the cap the counter turns yellow. |
 | `/sscap lock` / `unlock` | Lock or unlock the counter's position. |
-| `/sscap show` / `hide` | Show or hide the counter (the healthstone and delete buttons hide with it). |
+| `/sscap show` / `hide` | Show or hide the counter (the healthstone, firestone, spellstone and delete buttons hide with it). |
 | `/sscap sound` | Toggle the at-cap warning sound. |
 | `/sscap reset` | Move the counter back to its default position. |
 | `/sscap status` | Explain why shards are or are not being removed (see [Troubleshooting](#troubleshooting)). |
@@ -298,11 +338,18 @@ These are the original game's IDs. Forever may differ; `/wqol probe` shows what 
 | Drain Soul (ranks 1–4) | 1120, 8288, 8289, 11675 |
 | Soul Shard (item) | 6265 (change with `/sscap item <id>`) |
 | Create Healthstone (ranks) | 6201, 6202, 5699, 11729, 11730 |
+| Create Firestone (ranks) | 6366, 17951, 17952, 17953 |
+| Firestones (items) | 1254, 13699, 13700, 13701. English clients also match items named "Firestone". |
+| Create Spellstone (ranks) | 2362, 17727, 17728 |
+| Spellstones (items) | 5522, 13602, 13603. English clients also match items named "Spellstone". |
 | Healthstones (items, incl. Improved Healthstone variants) | 5512, 19004, 19005, 5511, 19006, 19007, 5509, 19008, 19009, 5510, 19010, 19011, 9421, 19012, 19013. English clients also match items named "Healthstone". |
 | Summon Imp / Voidwalker / Succubus / Felhunter / Felguard | 688 / 697 / 712 / 691 / 30146 |
 | Inferno (reagent Infernal Stone) | 1122 (item 5565) |
 | Ritual of Doom (reagent Demonic Figurine) | 18540 (item 16583) |
 | Fel Domination | 18708 |
+| Create Soulstone (ranks) | 693, 20752, 20755, 20756, 20757 |
+| Soulstones (items) | 5232, 16892, 16893, 16895, 16896. English clients also match items named "Soulstone". |
+| Soulstone Resurrection (using a soulstone; starts the 30 min cooldown) | 20707, 20762, 20763, 20764, 20765 |
 
 ---
 
@@ -321,6 +368,7 @@ Structure (`WarlockQoLDB.modules`):
 | `summon` | `enabled`, `message`, `messageNoTarget`, `debug` |
 | `shards` | `enabled`, `cap` (default 20), `nearOffset` (2), `autoDelete`, `sound`, `locked`, `hidden`, `point` (counter position), `shardItemID`, `forceMode`, `blockedOnBuild` (build that blocked auto-delete) |
 | `pets` | `enabled`, `expanded` (row open), `point` (position while standalone), `migrated` |
+| `soulstone` | `enabled`, `point` (button position), `cooldownUntil` (when the soulstone cooldown ends) |
 
 Only edit this file while the game is **fully closed**. The game rewrites it when you log out.
 
@@ -336,9 +384,12 @@ WarlockQoL\
   Modules\
     SummonAnnounce.lua       Summon Announce
     Pets.lua                 Demon Bar
+    Soulstone.lua            Soulstone Button
     Shards\
-      UI.lua                 shard counter, cap editor, healthstone and delete buttons
-      Trim.lua               shard removal, healthstone checks, /sscap status
+      UI.lua                 shard counter, cap editor, healthstone, firestone/spellstone
+                             and delete buttons
+      Trim.lua               shard removal, healthstone checks, button layout, /sscap status
+      Stones.lua             firestone and spellstone data and checks
       Shards.lua             Soul Shards feature: reading shards, alerts, /sscap
   README.md                  this file (the game ignores it)
 ```
