@@ -49,16 +49,7 @@ fi
 echo "Game version IDs: $game_versions"
 
 # --- Changelog: annotated tag message, else commits since the previous tag ---
-changelog=""
-if [[ -n "${CI_COMMIT_TAG:-}" ]] && [[ "$(git cat-file -t "$CI_COMMIT_TAG" 2>/dev/null)" == "tag" ]]; then
-  changelog="$(git tag -l --format='%(contents)' "$CI_COMMIT_TAG" | sed '/-----BEGIN PGP SIGNATURE-----/,$d')"
-fi
-if [[ -z "${changelog//[[:space:]]/}" ]]; then
-  prev_tag="$(git describe --tags --abbrev=0 "${CI_COMMIT_TAG:-HEAD}^" 2>/dev/null || true)"
-  range="${prev_tag:+$prev_tag..}${CI_COMMIT_TAG:-HEAD}"
-  changelog="$(git log --no-merges --format='- %s' "$range")"
-fi
-changelog="# ${ADDON_DIR} ${version}"$'\n\n'"${changelog:-No changes listed.}"
+changelog="# ${ADDON_DIR} ${version}"$'\n\n'"$(bash "$(dirname "$0")/changelog.sh")"
 echo "---- changelog ----"; echo "$changelog"; echo "-------------------"
 
 metadata="$(jq -cn \

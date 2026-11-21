@@ -171,6 +171,27 @@ The tag starts the pipeline in `.gitlab-ci.yml`:
 2. **package** – zips the addon into `dist/`.
 3. **curseforge** – uploads the zip with the tag message as the changelog.
 
+4. **github** – (only once `GITHUB_REPO` is set) pushes the tag to GitHub, creates a GitHub
+   release with the same changelog, and attaches the zip. Alpha/beta tags become pre-releases.
+
 It needs the `CF_API_TOKEN` and `CF_PROJECT_ID` CI/CD variables. Set `CF_DRY_RUN=1` to run
-everything except the upload. Job images come through the Docker Hub cache on the Pi
+everything except the upload.
+
+### GitHub releases (optional)
+
+1. Create the GitHub repo (it can be empty).
+2. On GitHub: **Settings > Developer settings > Personal access tokens > Fine-grained tokens >
+   Generate new token**. Repository access: **Only select repositories** → that repo.
+   Permissions: **Contents: Read and write**. Copy the token.
+3. In GitLab, **Settings > CI/CD > Variables**:
+   - `GITHUB_REPO` = `owner/name` (not masked; it isn't secret).
+   - `GITHUB_TOKEN` = the token, **Masked** and **Protected**.
+4. Protected variables only reach protected refs: under **Settings > Repository > Protected
+   tags**, protect `v*` (if the CurseForge upload already works, it is). Otherwise the job
+   fails with "Set GITHUB_TOKEN".
+
+The job pushes only the tag (and the commits it needs) to GitHub; to keep GitHub's `main` up
+to date too, add a push mirror under **Settings > Repository > Mirroring repositories**.
+Set `GH_DRY_RUN=1` to print the release notes without touching GitHub. Re-running the job is
+safe: it updates the existing release and replaces the zip. Job images come through the Docker Hub cache on the Pi
 (`HUB_MIRROR`, default `localhost:5001`).

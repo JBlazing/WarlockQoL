@@ -38,6 +38,8 @@
 #                        one line so it can be masked). The release jobs push the version
 #                        commit and tag with it over SSH.
 #   RELEASE_TOKEN        Fallback: access token with write_repository, pushed over HTTPS.
+#   GITHUB_REPO          owner/name of a GitHub repo. When set, tag pipelines also publish a
+#                        GitHub release there (needs GITHUB_TOKEN; GH_DRY_RUN=1 to test).
 #
 # The inputs below only matter for a manual "Run pipeline"; pushes and tags use the defaults.
 
@@ -166,3 +168,15 @@ curseforge:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-(alpha|beta)(\.\d+)?)?$/
   script:
     - bash ci/upload-curseforge.sh
+
+# GitHub release for the same tag: pushes the tag to GitHub, creates the release with the
+# changelog, attaches the zip. Only runs once GITHUB_REPO is set (see RELEASING.md).
+github:
+  stage: publish
+  needs: [package]
+  interruptible: false
+  resource_group: github
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-(alpha|beta)(\.\d+)?)?$/ && $GITHUB_REPO
+  script:
+    - bash ci/upload-github.sh
