@@ -5,7 +5,7 @@
 #
 # Releasing from GitLab with options: Build > Pipelines > Run pipeline on main, set "release" to true and
 # pick bump/channel. The release job bumps the version, commits, and pushes the tag, which
-# starts the publish pipeline below. (Needs the RELEASE_TOKEN variable, see RELEASING.md.)
+# starts the publish pipeline below. (Needs RELEASE_DEPLOY_KEY or RELEASE_TOKEN, see RELEASING.md.)
 #
 # Releasing from your PC: scripts/release.sh does steps 1-2 for you, e.g.
 # `bash scripts/release.sh patch --beta`; run it with -h for options.
@@ -34,8 +34,10 @@
 #                        Pi itself, not the runner container. Podman must list it as an
 #                        insecure registry (~/.config/containers/registries.conf.d/).
 #                        The cache fills itself on first pull.
-#   RELEASE_TOKEN        Project access token (write_repository, Maintainer) used by the
-#                        manual release job to push the version commit and tag.
+#   RELEASE_DEPLOY_KEY   Private key of a write-access deploy key (File variable, or base64 on
+#                        one line so it can be masked). The release jobs push the version
+#                        commit and tag with it over SSH.
+#   RELEASE_TOKEN        Fallback: access token with write_repository, pushed over HTTPS.
 #
 # The inputs below only matter for a manual "Run pipeline"; pushes and tags use the defaults.
 
@@ -97,6 +99,8 @@ lint:
   needs: [lint]
   interruptible: false
   resource_group: release # never cut two releases at once
+  before_script:
+    - apk add --no-cache bash curl jq zip git lua5.1 openssh-client >/dev/null
   script:
     - bash ci/cut-release.sh
 

@@ -17,8 +17,8 @@ Open the latest `main` pipeline and press ▶ on the one you want. It works out 
 from the `.toc`, commits `Release vX.Y.Z`, and pushes the tag. The changelog is the commits
 since the last final release, and the tag is published as a CurseForge **release** (not a beta).
 The jobs are optional, so a pipeline nobody releases from still passes. If `main` has moved on
-since that pipeline ran, the job stops; use the newest pipeline instead. Needs `RELEASE_TOKEN`
-(see below).
+since that pipeline ran, the job stops; use the newest pipeline instead. Needs the deploy key
+set up once (see below).
 
 ## Releasing from GitLab with options (betas, custom changelog)
 
@@ -42,15 +42,41 @@ Example sequence: `patch`+`beta` → `none`+`beta` → `none`+`prod` gives
 If someone pushes to `main` while the release pipeline is running, the job stops rather than
 release code that wasn't checked; run the pipeline again.
 
-### One-time setup: `RELEASE_TOKEN`
+### One-time setup: deploy key (`RELEASE_DEPLOY_KEY`)
 
-The job pushes with a project access token, not the job token, because pushes made with the
-job token don't start pipelines (so the tag would never be published).
+The release jobs push the version commit and tag over SSH with a deploy key that has write
+access to this project only. The built-in job token won't do: pushes made with it don't start
+pipelines, so the tag would never be published. (Works on the free plan.)
 
-1. **Settings > Access tokens > Add new token**: role **Maintainer**, scope **write_repository**.
-2. **Settings > CI/CD > Variables > Add variable**: key `RELEASE_TOKEN`, the token as value,
-   **Masked** and **Protected** (so only `main` and protected tags can use it).
-3. If `main` or `v*` tags are protected, make sure Maintainers are allowed to push/create them.
+1. Make a key pair (Git Bash), with no passphrase:
+
+   ```sh
+   ssh-keygen -t ed25519 -N "" -C "WarlockQoL release" -f warlockqol_release
+   ```
+
+2. **Settings > Repository > Deploy keys > Add new key**: paste `warlockqol_release.pub`, and
+   tick **Grant write permissions to this key**.
+3. **Settings > CI/CD > Variables > Add variable**:
+   - Key `RELEASE_DEPLOY_KEY`, **Protected**, **Masked**.
+   - Value: the private key as one base64 line (masking needs a single line):
+
+     ```sh
+     base64 -w0 warlockqol_release   # copy the output
+     ```
+
+4. **Settings > Repository > Protected branches**, `main`: add the deploy key to
+   **Allowed to push and merge** (it only shows up after step 2). If you protect `v*` tags,
+   add it to **Allowed to create** there too.
+5. Delete both key files from your PC (`warlockqol_release` and `.pub`); GitLab has what it
+   needs. To revoke access, remove the deploy key.
+
+The job checks GitLab's host key with `ssh-keyscan`. To pin it instead, add a
+`RELEASE_SSH_KNOWN_HOSTS` variable holding the `known_hosts` line(s) GitLab publishes for
+gitlab.com.
+
+Alternative: set `RELEASE_TOKEN` to an access token with `write_repository` (a personal access
+token works on the free plan) and the job pushes over HTTPS instead. The deploy key wins when
+both are set.
 
 ## Releasing from your PC
 
