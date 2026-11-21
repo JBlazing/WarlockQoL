@@ -2,11 +2,12 @@ local addonName, ns = ...
 
 -- Firestone and Spellstone: data and checks for the row under the Create
 -- Healthstone button (UI.lua builds it, Trim.UpdateButton fills it).
---   * Neither stone in your bags: two half-width Create buttons
---     (Firestone left, Spellstone right), each shown when you know the
---     spell, hold a Soul Shard and don't hold that stone in your off-hand.
---   * Either stone in your bags: one full-width button that applies it to
---     your main-hand weapon.
+--   Two half-width buttons, Firestone left and Spellstone right. Each one
+--   handles only its own stone:
+--   * that stone in your bags: applies it to your main-hand weapon;
+--   * otherwise: creates it, when you know the spell, hold a Soul Shard
+--     and don't hold that stone in your off-hand;
+--   * otherwise hidden.
 -- Unlike healthstones, these do NOT hold back
 -- shard auto-delete: many Warlocks never use one, and keeping a shard for
 -- them would stop auto-delete for good.
@@ -21,6 +22,7 @@ Stones.list = {
     {
         key = "firestone",
         label = "Firestone",
+        short = "Fire", -- button text
         name = "firestone", -- English name fallback
         -- Create Firestone ranks, highest first: Major, Greater, normal, Lesser.
         spells = { 17953, 17952, 17951, 6366 },
@@ -32,6 +34,7 @@ Stones.list = {
     {
         key = "spellstone",
         label = "Spellstone",
+        short = "Spell",
         name = "spellstone",
         -- Create Spellstone ranks, highest first: Major, Greater, normal.
         spells = { 17728, 17727, 2362 },
@@ -99,18 +102,6 @@ function Stones.FindInBags(stone)
     return nil
 end
 
--- The first stone (Firestone, then Spellstone) in your bags, as
--- stone, useString, itemID; or nil.
-function Stones.AnyInBags()
-    for _, stone in ipairs(Stones.list) do
-        local use, id = Stones.FindInBags(stone)
-        if use then
-            return stone, use, id
-        end
-    end
-    return nil
-end
-
 -- Held in the off-hand (by ID, or by name if Forever uses other IDs).
 function Stones.Held(stone)
     local held = GetInventoryItemID and ns.Plain(GetInventoryItemID("player", INVSLOT_OFFHAND))
@@ -131,29 +122,22 @@ function Stones.Has(stone)
     return Stones.FindInBags(stone) ~= nil or Stones.Held(stone)
 end
 
--- What the stone row should show:
---   "apply", stone, useString, itemID  a stone is in your bags: one button
---                                      that applies it to your weapon
---   "create", { [key] = spellID }      no stone in bags: Create buttons for
---                                      the ones you know (and don't hold)
---   nil                                nothing to show
--- hasShard: you hold at least one Soul Shard (needed to create).
-function Stones.RowState(hasShard)
+-- What one stone's button should do, or nil to hide it:
+--   { action = "apply", use = useString, itemID = id }  the stone is in your
+--       bags: apply it to your main-hand weapon
+--   { action = "create", spellID = id }  not in bags, you know the spell,
+--       hold a Soul Shard (hasShard) and don't hold the stone in your off-hand
+function Stones.ButtonState(stone, hasShard)
     if ns.mode ~= "item" then return nil end
-    local stone, use, id = Stones.AnyInBags()
-    if stone then
-        return "apply", stone, use, id
+    local use, id = Stones.FindInBags(stone)
+    if use then
+        return { action = "apply", use = use, itemID = id }
     end
-    if not hasShard then return nil end
-    local spells, any = {}, false
-    for _, s in ipairs(Stones.list) do
-        if not Stones.Held(s) then
-            spells[s.key] = Stones.BestSpell(s)
-            any = any or spells[s.key] ~= nil
+    if hasShard and not Stones.Held(stone) then
+        local spell = Stones.BestSpell(stone)
+        if spell then
+            return { action = "create", spellID = spell }
         end
-    end
-    if any then
-        return "create", spells
     end
     return nil
 end

@@ -449,7 +449,7 @@ end
 --     at least one shard, at any shard count (secure button; only changed
 --     out of combat, re-run on combat end; hidden while dead by its holder)
 --   * Firestone / Spellstone row under the healthstone row: two half-width
---     Create buttons, or one Apply button while a stone is in your bags
+--     buttons, each creating its stone or applying it while in your bags
 --     (see Stones.lua)
 --   * Delete extra: over the cap, no healthstone to make, auto-delete
 --     is off or blocked, and out of combat (hidden on PLAYER_REGEN_DISABLED,
@@ -496,43 +496,34 @@ function Trim.UpdateButton()
     -- Firestone (left) / Spellstone (right) row: secure, so only changed out
     -- of combat. Sits under the healthstone / delete row when that is
     -- showing, otherwise moves up directly under the counter.
-    -- With a stone in your bags the row is one button that applies it to
-    -- your weapon instead.
+    -- Each button handles only its own stone: Create it, or Apply it to your
+    -- weapon while it is in your bags.
     local row = ns.stoneRow
     if row and not InCombatLockdown() then
-        local state, a, b, c
-        if not ns.shardDB.hidden then
-            state, a, b, c = ns.Stones.RowState(count and count >= 1)
-        end
+        local hasShard = count and count >= 1
         local any = false
-        local apply = row.apply
-        if state == "apply" then
-            local stone, use, itemID = a, b, c
-            apply:SetAttribute("type", "macro")
-            apply:SetAttribute("macrotext", ns.Stones.ApplyMacro(use))
-            apply.itemID = itemID
-            apply:SetText("Apply " .. stone.label)
-            local icon = itemID and C_Item and C_Item.GetItemIconByID
-                and ns.Plain(C_Item.GetItemIconByID(itemID))
-            apply.icon:SetTexture(icon or stone.icon)
-            if apply.SetBackdropColor then
-                local col = stone.color
-                apply:SetBackdropColor(col.bg[1], col.bg[2], col.bg[3], col.bg[4])
-                apply:SetBackdropBorderColor(col.border[1], col.border[2], col.border[3], col.border[4])
-            end
-            apply:Show()
-            any = true
-        else
-            apply:Hide()
-        end
         for _, stone in ipairs(ns.Stones.list) do
             local btn = row.buttons[stone.key]
-            local spell = state == "create" and a[stone.key] or nil
-            if spell then
+            local st = not ns.shardDB.hidden and ns.Stones.ButtonState(stone, hasShard) or nil
+            btn.action = st and st.action
+            if st and st.action == "apply" then
+                btn:SetAttribute("spell", nil)
+                btn:SetAttribute("type", "macro")
+                btn:SetAttribute("macrotext", ns.Stones.ApplyMacro(st.use))
+                btn.itemID, btn.spellID = st.itemID, nil
+                btn:SetText(stone.short)
+                local icon = st.itemID and C_Item and C_Item.GetItemIconByID
+                    and ns.Plain(C_Item.GetItemIconByID(st.itemID))
+                btn.icon:SetTexture(icon or stone.icon)
+                btn:Show()
+                any = true
+            elseif st then
+                btn:SetAttribute("macrotext", nil)
                 btn:SetAttribute("type", "spell")
-                btn:SetAttribute("spell", spell)
-                btn.spellID = spell
-                btn.icon:SetTexture(ns.Stones.Icon(stone, spell))
+                btn:SetAttribute("spell", st.spellID)
+                btn.spellID, btn.itemID = st.spellID, nil
+                btn:SetText(stone.short)
+                btn.icon:SetTexture(ns.Stones.Icon(stone, st.spellID))
                 btn:Show()
                 any = true
             else

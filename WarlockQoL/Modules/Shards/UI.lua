@@ -267,8 +267,9 @@ function ns.CreateHealthstoneButton(display)
     return b
 end
 
--- Create Firestone / Create Spellstone: a row of two half-width secure
--- buttons (Firestone left, Spellstone right) under the healthstone button.
+-- Firestone / Spellstone: a row of two half-width secure buttons (Firestone
+-- left, Spellstone right) under the healthstone button. Each one creates its
+-- stone, or applies it to your weapon when it is in your bags.
 -- Like the healthstone button, attributes, Show/Hide and the row position
 -- are only changed out of combat (Trim.UpdateButton), and the holder hides
 -- everything while you are dead. Must be created out of combat.
@@ -299,10 +300,10 @@ local function CreateStoneButton(stone, holder)
     icon:SetTexture(stone.icon)
     b.icon = icon
 
-    -- Half width, so the shorter font and just the stone's name.
+    -- Half width, so the shorter font and a short name ("Fire", "Spell").
     b:SetNormalFontObject("GameFontNormalSmall")
     b:SetHighlightFontObject("GameFontHighlightSmall")
-    b:SetText(stone.label)
+    b:SetText(stone.short)
     local fs = b:GetFontString()
     if fs then
         fs:ClearAllPoints()
@@ -310,14 +311,25 @@ local function CreateStoneButton(stone, holder)
     end
     b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 
+    -- self.action is "create" (cast spellID) or "apply" (macro using itemID),
+    -- set by Trim.UpdateButton.
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        if self.spellID and GameTooltip.SetSpellByID then
-            GameTooltip:SetSpellByID(self.spellID)
+        if self.action == "apply" then
+            if self.itemID and GameTooltip.SetItemByID then
+                GameTooltip:SetItemByID(self.itemID)
+            else
+                GameTooltip:AddLine("Apply " .. stone.label)
+            end
+            GameTooltip:AddLine("Click: apply it to your main-hand weapon.", 0.6, 0.6, 0.6, true)
         else
-            GameTooltip:AddLine("Create " .. stone.label)
+            if self.spellID and GameTooltip.SetSpellByID then
+                GameTooltip:SetSpellByID(self.spellID)
+            else
+                GameTooltip:AddLine("Create " .. stone.label)
+            end
+            GameTooltip:AddLine("You have no " .. stone.name .. ". Uses one Soul Shard.", 0.6, 0.6, 0.6, true)
         end
-        GameTooltip:AddLine("You have no firestone or spellstone. Uses one Soul Shard.", 0.6, 0.6, 0.6, true)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", OnLeave)
@@ -346,49 +358,6 @@ function ns.CreateStoneRow(display)
     r:SetPoint("TOPLEFT", holder, "TOP", STONE_GAP / 2, 0)
     r:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 0, 0)
     holder.buttons[right.key] = r
-
-    -- Full-width "Apply" button, used instead of the two Create buttons
-    -- while a stone is in your bags. A macro: use the stone, then the
-    -- main-hand slot, so one click applies it to your weapon.
-    local a = CreateFrame("Button", "WarlockQoL_ShardsApplyStoneButton", holder,
-        "SecureActionButtonTemplate,BackdropTemplate")
-    a:SetAllPoints(holder)
-    a:RegisterForClicks("AnyUp", "AnyDown")
-    a:SetAttribute("type", "macro")
-    if a.SetBackdrop then
-        a:SetBackdrop({
-            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            edgeSize = 12,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-    end
-    local aIcon = a:CreateTexture(nil, "ARTWORK")
-    aIcon:SetSize(18, 18)
-    aIcon:SetPoint("LEFT", a, "LEFT", 4, 0)
-    a.icon = aIcon
-    a:SetNormalFontObject("GameFontNormal")
-    a:SetHighlightFontObject("GameFontHighlight")
-    a:SetText("Apply stone")
-    local afs = a:GetFontString()
-    if afs then
-        afs:ClearAllPoints()
-        afs:SetPoint("LEFT", aIcon, "RIGHT", 4, 0)
-    end
-    a:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    a:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        if self.itemID and GameTooltip.SetItemByID then
-            GameTooltip:SetItemByID(self.itemID)
-        else
-            GameTooltip:AddLine(self:GetText() or "Apply stone")
-        end
-        GameTooltip:AddLine("Click: apply it to your main-hand weapon.", 0.6, 0.6, 0.6, true)
-        GameTooltip:Show()
-    end)
-    a:SetScript("OnLeave", OnLeave)
-    a:Hide()
-    holder.apply = a
 
     ns.AnchorStoneRow(holder, false)
     return holder
